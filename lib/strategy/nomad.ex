@@ -114,6 +114,7 @@ defmodule Cluster.Strategy.Nomad do
     Keyword.get(config, :token, @default_token)
   end
 
+  @spec get_nodes(State.t()) :: [atom()]
   defp get_nodes(%State{config: config} = state) do
     server_url = Keyword.fetch(config, :nomad_server_url)
     service_name = Keyword.fetch(config, :service_name)
@@ -143,13 +144,8 @@ defmodule Cluster.Strategy.Nomad do
 
     case :httpc.request(:get, {url, headers}, http_options, []) do
       {:ok, {{_version, 200, _status}, _headers, body}} ->
-        val =
-          Jason.decode!(body)
-          |> Enum.map(fn %{"Address" => ip_addr} -> "#{node_basename}@#{ip_addr}" end)
-
-        warn(topology, val)
-
-        val
+        Jason.decode!(body)
+        |> Enum.map(fn %{"Address" => addr} -> :"#{node_basename}@#{addr}" end)
 
       {:ok, {{_version, 403, _status}, _headers, _body}} ->
         warn(topology, "cannot query nomad (unauthorized)")
