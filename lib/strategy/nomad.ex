@@ -132,21 +132,19 @@ defmodule Cluster.Strategy.Nomad do
          token,
          %State{
            topology: topology
-         } = state
+         }
        )
-       when server_url != "" and service_name != "" do
+       when server_url != "" and service_name != "" and node_basename != "" do
     debug(topology, "polling nomad for '#{service_name}' in namespace '#{namespace}'")
 
     headers = [{'X-Nomad-Token', '#{token}'}]
     http_options = [ssl: [verify: :verify_none], timeout: 15000]
-    url = 'https://#{server_url}/v1/service/#{sevice_name}'
+    url = 'https://#{server_url}/v1/service/#{service_name}'
 
     case :httpc.request(:get, {url, headers}, http_options, []) do
       {:ok, {{_version, 200, _status}, _headers, body}} ->
-        parse_response(service_name, Jason.decode!(body))
-
         Jason.decode!(body)
-        |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{addr}" end)
+        |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{ip_addr}" end)
 
       {:ok, {{_version, 403, _status}, _headers, body}} ->
         %{"message" => msg} = Jason.decode!(body)
@@ -175,7 +173,7 @@ defmodule Cluster.Strategy.Nomad do
        ) do
     warn(
       topology,
-      "nomad strategy is selected, but server_url, service_name, or invalid_node_base_name param is invalid: #{inspect(%{nomad_server_url: invalid_server_url, service_name: invalid_service_name})}"
+      "nomad strategy is selected, but server_url, service_name, or node_base_name param is invalid: #{inspect(%{nomad_server_url: invalid_server_url, service_name: invalid_service_name, node_basename: invalid_node_base_name})}"
     )
 
     []
