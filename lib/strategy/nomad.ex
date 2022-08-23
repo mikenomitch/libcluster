@@ -139,7 +139,7 @@ defmodule Cluster.Strategy.Nomad do
 
     headers = [{'X-Nomad-Token', '#{token}'}]
     http_options = []
-    url = 'https://#{server_url}/v1/service/#{service_name}'
+    url = '#{server_url}/v1/service/#{service_name}'
 
     case :httpc.request(:get, {url, headers}, http_options, []) do
       {:ok, {{_version, 200, _status}, _headers, body}} ->
