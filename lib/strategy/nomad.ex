@@ -9,6 +9,7 @@ defmodule Cluster.Strategy.Nomad do
   * `service_name` - The name of the Nomad service you wish to get the addresses for (required; e.g. "my-elixir-app")
   * `namespace` - The Nomad namespace to query (optional; default: "default")
   * `nomad_server_url` - The short name of the nodes you wish to connect to (required; e.g. "https://127.0.0.1:4646")
+  * `node_basename` - The erland node basename (required; e.g. "app")
   * `poll_interval` - How often to poll in milliseconds (optional; default: 5_000)
 
   ## Usage
@@ -21,6 +22,7 @@ defmodule Cluster.Strategy.Nomad do
               service_name: "my-elixir-app",
               nomad_server_url: "https://my-nomad-url:4646",
               namespace: "engineering",
+              node_basename: "app",
               polling_interval: 5_000]]]
   """
 
@@ -115,15 +117,17 @@ defmodule Cluster.Strategy.Nomad do
   defp get_nodes(%State{config: config} = state) do
     server_url = Keyword.fetch(config, :nomad_server_url)
     service_name = Keyword.fetch(config, :service_name)
+    node_basename = Keyword.fetch(config, :node_basename)
     namespace = get_namespace(config)
     token = get_token(config)
 
-    fetch_nodes(server_url, service_name, namespace, token, state)
+    fetch_nodes(server_url, service_name, node_basename, namespace, token, state)
   end
 
   defp fetch_nodes(
          {:ok, server_url},
          {:ok, service_name},
+         {:ok, node_basename},
          namespace,
          token,
          %State{
@@ -142,7 +146,7 @@ defmodule Cluster.Strategy.Nomad do
         parse_response(service_name, Jason.decode!(body))
 
         Jason.decode!(body)
-        |> Enum.map(fn %{Address: addr, Port: port} -> "#{service_name}@#{addr}:#{port}" end)
+        |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{addr}" end)
 
       {:ok, {{_version, 403, _status}, _headers, body}} ->
         %{"message" => msg} = Jason.decode!(body)
@@ -162,6 +166,7 @@ defmodule Cluster.Strategy.Nomad do
   defp fetch_nodes(
          {:ok, invalid_server_url},
          {:ok, invalid_service_name},
+         {:ok, invalid_node_base_name},
          _namespace,
          _token,
          %State{
@@ -170,13 +175,15 @@ defmodule Cluster.Strategy.Nomad do
        ) do
     warn(
       topology,
-      "nomad strategy is selected, but server_url or service_name param is invalid: #{inspect(%{nomad_server_url: invalid_server_url, service_name: invalid_service_name})}"
+      "nomad strategy is selected, but server_url, service_name, or invalid_node_base_name param is invalid: #{inspect(%{nomad_server_url: invalid_server_url, service_name: invalid_service_name})}"
     )
 
     []
   end
 
-  defp fetch_nodes(:error, _service_name, _namespace, _token, %State{topology: topology}) do
+  defp fetch_nodes(:error, _service_name, _node_base_name, _namespace, _token, %State{
+         topology: topology
+       }) do
     warn(
       topology,
       "nomad polling strategy is selected, but nomad_server_url param missed"
@@ -185,10 +192,23 @@ defmodule Cluster.Strategy.Nomad do
     []
   end
 
-  defp fetch_nodes(_server_url, :error, _namespace, _token, %State{topology: topology}) do
+  defp fetch_nodes(_server_url, :error, _node_base_name, _namespace, _token, %State{
+         topology: topology
+       }) do
     warn(
       topology,
       "nomad polling strategy is selected, but service_name param missed"
+    )
+
+    []
+  end
+
+  defp fetch_nodes(_server_url, _service_name, :error, _namespace, _token, %State{
+         topology: topology
+       }) do
+    warn(
+      topology,
+      "nomad polling strategy is selected, but node_base_name param missed"
     )
 
     []
