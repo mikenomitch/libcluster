@@ -143,8 +143,13 @@ defmodule Cluster.Strategy.Nomad do
 
     case :httpc.request(:get, {url, headers}, http_options, []) do
       {:ok, {{_version, 200, _status}, _headers, body}} ->
-        Jason.decode!(body)
-        |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{ip_addr}" end)
+        val =
+          Jason.decode!(body)
+          |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{ip_addr}" end)
+
+        warn(topology, val)
+
+        val
 
       {:ok, {{_version, 403, _status}, _headers, _body}} ->
         warn(topology, "cannot query nomad (unauthorized)")
