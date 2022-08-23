@@ -145,7 +145,7 @@ defmodule Cluster.Strategy.Nomad do
       {:ok, {{_version, 200, _status}, _headers, body}} ->
         val =
           Jason.decode!(body)
-          |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{ip_addr}" end)
+          |> Enum.map(fn %{"Address" => ip_addr} -> "#{node_basename}@#{ip_addr}" end)
 
         warn(topology, val)
 
@@ -161,6 +161,10 @@ defmodule Cluster.Strategy.Nomad do
 
       {:error, reason} ->
         error(topology, "request to nomad failed!: #{inspect(reason)}")
+        []
+
+      _ ->
+        error(topology, "unknown error fetching nomad service info")
         []
     end
   end
