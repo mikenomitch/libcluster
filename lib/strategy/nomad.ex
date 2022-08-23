@@ -146,9 +146,8 @@ defmodule Cluster.Strategy.Nomad do
         Jason.decode!(body)
         |> Enum.map(fn %{Address: ip_addr} -> "#{node_basename}@#{ip_addr}" end)
 
-      {:ok, {{_version, 403, _status}, _headers, body}} ->
-        %{"message" => msg} = Jason.decode!(body)
-        warn(topology, "cannot query nomad (unauthorized): #{msg}")
+      {:ok, {{_version, 403, _status}, _headers, _body}} ->
+        warn(topology, "cannot query nomad (unauthorized)")
         []
 
       {:ok, {{_version, code, status}, _headers, body}} ->
