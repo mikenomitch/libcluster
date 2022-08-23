@@ -138,7 +138,7 @@ defmodule Cluster.Strategy.Nomad do
     debug(topology, "polling nomad for '#{service_name}' in namespace '#{namespace}'")
 
     headers = [{'X-Nomad-Token', '#{token}'}]
-    http_options = [ssl: [verify: :verify_none], timeout: 15000]
+    http_options = []
     url = 'https://#{server_url}/v1/service/#{service_name}'
 
     case :httpc.request(:get, {url, headers}, http_options, []) do
